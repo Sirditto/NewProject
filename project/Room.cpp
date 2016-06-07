@@ -108,7 +108,7 @@ void Room::leaveRoom(User* user)
 		if (_users[i] == user)
 		{
 			//removing the user from the room
-			_users.erase(_users.begin + i);
+			_users.erase(_users.begin() + i);
 
 			//sending user leaving succes message
 			user->send(to_string(LEAVE_ROOM_RESPONSE) + "0"); 

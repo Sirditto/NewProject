@@ -26,7 +26,7 @@ TriviaServer::~TriviaServer()
 void TriviaServer::server()
 {
 	bindAndListen();
-	thread t(&handleRecivedMessages);
+	thread t(&TriviaServer::handleRecivedMessages);
 	t.detach();
 
 	//main server loop
@@ -49,7 +49,7 @@ void TriviaServer::acceptClient()
 		WSACleanup();
 	}
 
-	thread t(&clientHandler, curr_client_soc);
+	thread t(&TriviaServer::clientHandler, curr_client_soc);
 }
 
 /*binds and listens t*/
@@ -226,7 +226,7 @@ Room* TriviaServer::getRoomByid(int roomid)
 User* TriviaServer::getUserByName(string username)
 {
 	//going over the user map
-	for (map<SOCKET, User*>::const_iterator i = _connectedUser.begin; i < _connectedUser.end; i++)
+	for (map<SOCKET, User*>::const_iterator i = _connectedUser.begin(); i != _connectedUser.end(); i++)
 	{
 		//if the checked user's username is equal to the given one, return the user
 		if (i->second->getUsername() == username)
@@ -360,7 +360,7 @@ void TriviaServer::handlePlayerAnswer(RecivedMessage* msg)
 	//just making sure that the game exist
 	if (msg->getUser()->getGame())
 		//passing the messages arguments to the game, the answer proccess will be dealt there
-		if (!msg->getUser()->getGame()->handleAnswerFromUser(msg->getUser, stoi(msg->getValues()[1]), stoi(msg->getValues()[2]))) /// probably not the correct way to access answer number and answer time 
+		if (!msg->getUser()->getGame()->handleAnswerFromUser(msg->getUser(), stoi(msg->getValues()[1]), stoi(msg->getValues()[2]))) /// probably not the correct way to access answer number and answer time 
 			//if function returned false, game is over so we close it
 			delete msg->getUser()->getGame();
 }
@@ -373,7 +373,7 @@ bool TriviaServer::handleCreateRoom(RecivedMessage* msg)
 	{
 		_roomidSequence++;
 		//creating new room
-		if (msg->getUser()->createRoom(_roomidSequence, msg->getValues()[1], msg->getValues[2], msg->getValues[3], msg->getValues[4])) /// probably not the right way to access fields in message
+		if (msg->getUser()->createRoom(_roomidSequence, msg->getValues()[1], std::stoi(msg->getValues()[2]), std::stoi(msg->getValues()[3]), std::stoi(msg->getValues()[4]))) /// probably not the right way to access fields in message
 		{
 			//adding new room to room list
 			pair<int, Room*> newRoom(msg->getUser()->getRoom()->getId(), msg->getUser()->getRoom());
@@ -463,7 +463,7 @@ void TriviaServer::handleGetRooms(RecivedMessage* msg)
 	{
 		string message = to_string(ROOM_LIST_RESPONSE) + to_string(_roomList.size());
 
-		for (map<int, Room*>::iterator i = _roomList.begin; i != _roomList.end; i++)
+		for (map<int, Room*>::iterator i = _roomList.begin(); i != _roomList.end(); i++)
 		{
 			message += to_string(i->first); // adding current room's ID
 			message += i->second->getName(); // aadding current room's name

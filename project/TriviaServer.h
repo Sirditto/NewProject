@@ -1,8 +1,10 @@
 #pragma once
+#define _WINSOCKAPI_
 
 #include <iostream>
-#include <Windows.h>
 #include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <windows.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -24,7 +26,6 @@
 
 class RecivedMessage;
 
-using namespace std;
 
 class TriviaServer
 {
