@@ -49,3 +49,5 @@ project/Debug/project.tlog/CL.read.1.tlog
 *.pdb
 *.opendb
 >>>>>>> origin/master
+*.sdf
+project.sdf
