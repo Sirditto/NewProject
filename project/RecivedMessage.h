@@ -1,20 +1,9 @@
 #pragma once
 
-#include <iostream>
-#include <WinSock2.h>
-#include <Windows.h>
 #include <string>
-#include <vector>
-#include <map>
-#include <mutex>
-#include <queue>
 
-#include "TriviaServer.h"
-#include "DataBase.h"
-#include "Room.h"
+#include <Windows.h>
 #include "User.h"
-#include "Game.h"
-
 using namespace std;
 
 class RecivedMessage

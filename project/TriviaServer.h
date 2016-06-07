@@ -1,28 +1,19 @@
 #pragma once
 
-#include <iostream>
-#include <Windows.h>
+#define _WINSOCKAPI_
+
+#include <windows.h>
 #include <WinSock2.h>
-#include <string>
-#include <vector>
 #include <map>
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "Helper.h"
-#include "Protocol.h"
 #include "User.h"
 #include "DataBase.h"
-#include "Room.h"
 #include "Validator.h"
 #include "RecivedMessage.h"
 
 #pragma comment (lib, "Ws2_32.lib")
-
-class RecivedMessage;
 
 using namespace std;
 

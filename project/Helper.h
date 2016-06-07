@@ -1,5 +1,7 @@
 #pragma once
 
+#define _WINSOCKAPI_
+
 #include <vector>
 #include <string>
 #include <Windows.h>

@@ -1,18 +1,13 @@
 #pragma once
 
-#include <iostream>
-#include <WinSock2.h>
-#include <Windows.h>
-#include <string>
 #include <vector>
 #include <map>
 #include <mutex>
-#include <queue>
-
 #include "Protocol.h"
 #include "Helper.h"
 #include "User.h"
 
+class User;
 class Room
 {
 public:

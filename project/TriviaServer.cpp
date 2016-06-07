@@ -2,12 +2,27 @@
 
 int pushRange(string str, vector<string>& vec, int first, int last);
 
-/*constructor, initialize the main listening socket */
-TriviaServer::TriviaServer() : _socket(INVALID_SOCKET)
-{
-	_db = *(new DataBase());
-}
+static const unsigned int IFACE = 0;
 
+
+/*constructor, initialize the main listening socket */
+TriviaServer::TriviaServer()
+{
+	//_db.DataBase();
+	WSADATA wsa_data = {};
+	if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0)
+		throw std::exception("eror");
+	try
+	{
+		_socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (_socket < 0)
+			throw std::exception("ERROR opening socket", WSAGetLastError());
+	}
+	catch (exception exc1)
+	{
+		cout << exc1.what() << '\n';
+	}
+}
 
 /*distructor, closes the socket and cleans upthe room and user lists*/
 TriviaServer::~TriviaServer()
@@ -26,86 +41,42 @@ TriviaServer::~TriviaServer()
 void TriviaServer::server()
 {
 	bindAndListen();
-	thread t(&handleRecivedMessages);
-	t.detach();
 
-	//main server loop
+	std::thread t1(&TriviaServer::handleRecivedMessages, this);
+
+	t1.detach();
+
 	while (true)
 	{
 		acceptClient();
 	}
-
 }
 /*accept a new client*/
 void TriviaServer::acceptClient()
 {
-	SOCKET curr_client_soc = INVALID_SOCKET;
+	SOCKET AcceptSocket = ::accept(_socket, NULL, NULL);
 
-	// Accept a client socket
-	curr_client_soc = accept(_socket, NULL, NULL);
-	if (curr_client_soc == INVALID_SOCKET) {
-		printf("accept failed with error: %d\n", WSAGetLastError());
-		closesocket(_socket);
-		WSACleanup();
-	}
+	if (AcceptSocket == INVALID_SOCKET)
+		TRACE("eror accept");
 
-	thread t(&clientHandler, curr_client_soc);
+
+	thread t(&TriviaServer::clientHandler,this, AcceptSocket);
+	t.detach();
 }
 
 /*binds and listens t*/
 void TriviaServer::bindAndListen()
 {
-	WSADATA wsaData;
-	int iResult;
-
-	SOCKET ClientSocket = INVALID_SOCKET;
-
-	struct addrinfo *result = NULL;
-	struct addrinfo hints;
-
-	int iSendResult;
-	char recvbuf[DEFAULT_BUFLEN];
-	int recvbuflen = DEFAULT_BUFLEN;
-
-	// Initialize Winsock
-	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != 0) {
-		
-	}
-
-	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_PASSIVE;
-
-	// Resolve the server address and port
-	iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
-	if (iResult != 0) {
-		
-	}
-
-	// Create a SOCKET for connecting to server
-	_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-	if (_socket == INVALID_SOCKET) {
-		freeaddrinfo(result);
-		WSACleanup();
-	}
-
-	// Setup the TCP listening socket
-	iResult = bind(_socket, result->ai_addr, (int)result->ai_addrlen);
-	if (iResult == SOCKET_ERROR) {
-		freeaddrinfo(result);
-		WSACleanup();
-	}
-
-	//listen for connecting client
-	if (listen(_socket, SOMAXCONN) == SOCKET_ERROR) {
-		cout << "an error occured while listening for connecting client, error: " + WSAGetLastError() << endl;
-		WSACleanup();
-	}
-
-	freeaddrinfo(result);
+	struct sockaddr_in sa = { 0 };
+	sa.sin_port = htons(8820);
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = IFACE;
+	if (::bind(_socket, (struct sockaddr*)&sa, sizeof(sa)) == -1)
+		throw std::exception("bind");
+	TRACE("bind");
+	if (::listen(_socket, SOMAXCONN) == -1)
+		throw std::exception("bind");
+	TRACE("listen");
 }
 
 /*handles the request from the messages queue*/
@@ -226,12 +197,13 @@ Room* TriviaServer::getRoomByid(int roomid)
 User* TriviaServer::getUserByName(string username)
 {
 	//going over the user map
-	for (map<SOCKET, User*>::const_iterator i = _connectedUser.begin; i < _connectedUser.end; i++)
+	for (map<SOCKET, User*>::iterator i = _connectedUser.begin(); i != _connectedUser.end(); i++)
 	{
 		//if the checked user's username is equal to the given one, return the user
 		if (i->second->getUsername() == username)
 			return i->second;
 	}
+	return NULL;
 }
 
 /*returns user by its socket*/
@@ -261,15 +233,17 @@ User* TriviaServer::handleSignin(RecivedMessage* msg)
 			{
 				//sending user sign in fail message (1022)
 				msg->getUser()->send(to_string(SIGN_IN_RESPONSE) + "2");
+				return NULL;
 			}
 			//if user isnt connected
 			else
 			{
 				//sending user sign in success message
 				msg->getUser()->send(to_string(SIGN_IN_RESPONSE) + "0");
-				User newUser(msg->getUser()->getUsername(), msg->getUser()->getSocket());
-				pair<SOCKET, User*> p(msg->getSock(), &newUser);
+				User *newUser = new User(msg->getUser()->getUsername(), msg->getUser()->getSocket());
+				pair<SOCKET, User*> p(msg->getSock(), newUser);
 				_connectedUser.insert(p);
+				return newUser;
 			}
 		}
 		//if username and password doesnt match
@@ -277,9 +251,12 @@ User* TriviaServer::handleSignin(RecivedMessage* msg)
 		{
 			//sending user sign in fail message (1021)
 			msg->getUser()->send(to_string(SIGN_IN_RESPONSE) + "1");
-
+			return NULL;
 		}
 	}
+	else
+		return NULL;
+	
 }
 
 /*handle sign up request*/
@@ -360,7 +337,7 @@ void TriviaServer::handlePlayerAnswer(RecivedMessage* msg)
 	//just making sure that the game exist
 	if (msg->getUser()->getGame())
 		//passing the messages arguments to the game, the answer proccess will be dealt there
-		if (!msg->getUser()->getGame()->handleAnswerFromUser(msg->getUser, stoi(msg->getValues()[1]), stoi(msg->getValues()[2]))) /// probably not the correct way to access answer number and answer time 
+		if (!msg->getUser()->getGame()->handleAnswerFromUser(msg->getUser(), stoi(msg->getValues()[1]), stoi(msg->getValues()[2]))) /// probably not the correct way to access answer number and answer time 
 			//if function returned false, game is over so we close it
 			delete msg->getUser()->getGame();
 }
@@ -373,7 +350,7 @@ bool TriviaServer::handleCreateRoom(RecivedMessage* msg)
 	{
 		_roomidSequence++;
 		//creating new room
-		if (msg->getUser()->createRoom(_roomidSequence, msg->getValues()[1], msg->getValues[2], msg->getValues[3], msg->getValues[4])) /// probably not the right way to access fields in message
+		if (msg->getUser()->createRoom(_roomidSequence, (msg->getValues())[1], std::stoi(msg->getValues()[2]), std::stoi(msg->getValues()[3]), std::stoi(msg->getValues()[4]))) /// probably not the right way to access fields in message
 		{
 			//adding new room to room list
 			pair<int, Room*> newRoom(msg->getUser()->getRoom()->getId(), msg->getUser()->getRoom());
@@ -402,6 +379,8 @@ bool TriviaServer::handleCloseRoom(RecivedMessage* msg)
 			_roomList.erase(_roomList.find(msg->getUser()->getRoom()->getId()));
 			return true;
 		}
+		else
+			return false;
 	}
 	//case user isn't in a room
 	else
@@ -415,6 +394,7 @@ bool TriviaServer::handleJoinRoom(RecivedMessage* msg)
 	if (msg->getUser())
 	{
 		msg->getUser()->joinRoom((_roomList.find(stoi(msg->getValues()[1]))->second)); /// possibly would cause an error (not the correct way to access these fields)
+		return true;
 	}
 	else
 		return false;
@@ -463,7 +443,7 @@ void TriviaServer::handleGetRooms(RecivedMessage* msg)
 	{
 		string message = to_string(ROOM_LIST_RESPONSE) + to_string(_roomList.size());
 
-		for (map<int, Room*>::iterator i = _roomList.begin; i != _roomList.end; i++)
+		for (map<int, Room*>::iterator i = _roomList.begin(); i != _roomList.end(); i++)
 		{
 			message += to_string(i->first); // adding current room's ID
 			message += i->second->getName(); // aadding current room's name

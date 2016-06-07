@@ -1,8 +1,6 @@
 #pragma once
 
 #include <iostream>
-#include <WinSock2.h>
-#include <Windows.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -11,7 +9,7 @@
 
 #include "Helper.h"
 #include "DataBase.h"
-
+#include "User.h"
 
 class User;
 
