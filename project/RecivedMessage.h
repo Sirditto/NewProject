@@ -2,8 +2,10 @@
 
 #include <string>
 
+#include <WinSock2.h>
 #include <Windows.h>
 #include "User.h"
+
 using namespace std;
 
 class RecivedMessage

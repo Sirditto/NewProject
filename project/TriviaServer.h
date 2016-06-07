@@ -1,36 +1,22 @@
 #pragma once
-#define _WINSOCKAPI_
 
-<<<<<<< HEAD
-#define _WINSOCKAPI_
-
-#include <windows.h>
-#include <WinSock2.h>
-=======
 #include <iostream>
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <windows.h>
 #include <string>
 #include <vector>
->>>>>>> origin/master
 #include <map>
 #include <mutex>
 #include <queue>
 #include <thread>
-#include "User.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "Helper.h"
 #include "DataBase.h"
-#include "Validator.h"
 #include "RecivedMessage.h"
+#include "Validator.h"
 
-#pragma comment (lib, "Ws2_32.lib")
-
-<<<<<<< HEAD
-using namespace std;
-=======
 class RecivedMessage;
 
->>>>>>> origin/master
 
 class TriviaServer
 {
@@ -45,7 +31,7 @@ private:
 	map<SOCKET, User*> _connectedUser;
 	DataBase _db;
 	map<int, Room*> _roomList;
-	
+
 	mutex _mtxRecivedMessages;
 	queue<RecivedMessage*> _queRcvMessages;
 
@@ -55,7 +41,7 @@ private:
 	void acceptClient(); // name was changed from accept()
 	void clientHandler(SOCKET);
 	void safeDeleteUser(RecivedMessage*);
-	
+
 	User* handleSignin(RecivedMessage*);
 	bool handleSignup(RecivedMessage*);
 	void handleSignout(RecivedMessage*);
@@ -71,7 +57,7 @@ private:
 	void handleGetUserinRoom(RecivedMessage*);
 	void handleGetRooms(RecivedMessage*);
 
-	void handleGetBestScores(RecivedMessage*); 
+	void handleGetBestScores(RecivedMessage*);
 	void handleGetPersonalStatus(RecivedMessage*);
 
 	void handleRecivedMessages();
