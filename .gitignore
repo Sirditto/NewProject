@@ -51,3 +51,5 @@ project/Debug/project.tlog/CL.read.1.tlog
 >>>>>>> origin/master
 *.sdf
 project.sdf
+*.h
+project/sqlite3.c
