@@ -31,3 +31,8 @@
 *.sln
 *.suo
 *.db
+*.log
+*.tlog
+*.idb
+*.pdb
+*.opendb

@@ -20,8 +20,8 @@ using namespace std;
 class RecivedMessage
 {
 public:
-	RecivedMessage(SOCKET, int);
-	RecivedMessage(SOCKET, int, vector<string>);
+	RecivedMessage(SOCKET sock, int messagecode);
+	RecivedMessage(SOCKET sock, int messageCode, vector<string>& vals);
 
 	SOCKET getSock();
 	User* getUser();

@@ -13,6 +13,14 @@ void User::send(string msg)
 	Helper::sendData(_sock, msg);
 }
 
+string User::getUsername() { return _username; }
+
+SOCKET User::getSocket() { return _sock; }
+
+Room * User::getRoom() { return _currRoom; }
+
+Game * User::getGame() { return _currGame; }
+
 /*Game setter, setting the Room pointer to NULL*/
 void User::setGame(Game* gm)
 {

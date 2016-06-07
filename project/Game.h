@@ -19,7 +19,7 @@
 class Game
 {
 public:
-	Game(const vector<User*>&, int, DataBase&);
+	Game(const vector<User*>& players, int questionNum, DataBase& db);
 	~Game();
 	void sendFirstQuestion();
 	void handleFinishGame();
