@@ -40,4 +40,12 @@ project/Debug/project.tlog/CL.read.1.tlog
 *.tlog
 =======
 *.db
+<<<<<<< HEAD
+>>>>>>> origin/master
+=======
+*.log
+*.tlog
+*.idb
+*.pdb
+*.opendb
 >>>>>>> origin/master
