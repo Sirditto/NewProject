@@ -41,6 +41,11 @@ TriviaServer::~TriviaServer()
 void TriviaServer::server()
 {
 	bindAndListen();
+<<<<<<< HEAD
+=======
+	thread t(&TriviaServer::handleRecivedMessages);
+	t.detach();
+>>>>>>> origin/master
 
 	std::thread t1(&TriviaServer::handleRecivedMessages, this);
 
@@ -59,9 +64,13 @@ void TriviaServer::acceptClient()
 	if (AcceptSocket == INVALID_SOCKET)
 		TRACE("eror accept");
 
+<<<<<<< HEAD
 
 	thread t(&TriviaServer::clientHandler,this, AcceptSocket);
 	t.detach();
+=======
+	thread t(&TriviaServer::clientHandler, curr_client_soc);
+>>>>>>> origin/master
 }
 
 /*binds and listens t*/
@@ -197,7 +206,11 @@ Room* TriviaServer::getRoomByid(int roomid)
 User* TriviaServer::getUserByName(string username)
 {
 	//going over the user map
+<<<<<<< HEAD
 	for (map<SOCKET, User*>::iterator i = _connectedUser.begin(); i != _connectedUser.end(); i++)
+=======
+	for (map<SOCKET, User*>::const_iterator i = _connectedUser.begin(); i != _connectedUser.end(); i++)
+>>>>>>> origin/master
 	{
 		//if the checked user's username is equal to the given one, return the user
 		if (i->second->getUsername() == username)
@@ -350,7 +363,11 @@ bool TriviaServer::handleCreateRoom(RecivedMessage* msg)
 	{
 		_roomidSequence++;
 		//creating new room
+<<<<<<< HEAD
 		if (msg->getUser()->createRoom(_roomidSequence, (msg->getValues())[1], std::stoi(msg->getValues()[2]), std::stoi(msg->getValues()[3]), std::stoi(msg->getValues()[4]))) /// probably not the right way to access fields in message
+=======
+		if (msg->getUser()->createRoom(_roomidSequence, msg->getValues()[1], std::stoi(msg->getValues()[2]), std::stoi(msg->getValues()[3]), std::stoi(msg->getValues()[4]))) /// probably not the right way to access fields in message
+>>>>>>> origin/master
 		{
 			//adding new room to room list
 			pair<int, Room*> newRoom(msg->getUser()->getRoom()->getId(), msg->getUser()->getRoom());

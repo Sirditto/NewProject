@@ -1,9 +1,19 @@
 #pragma once
+#define _WINSOCKAPI_
 
+<<<<<<< HEAD
 #define _WINSOCKAPI_
 
 #include <windows.h>
 #include <WinSock2.h>
+=======
+#include <iostream>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <windows.h>
+#include <string>
+#include <vector>
+>>>>>>> origin/master
 #include <map>
 #include <mutex>
 #include <queue>
@@ -15,7 +25,12 @@
 
 #pragma comment (lib, "Ws2_32.lib")
 
+<<<<<<< HEAD
 using namespace std;
+=======
+class RecivedMessage;
+
+>>>>>>> origin/master
 
 class TriviaServer
 {
