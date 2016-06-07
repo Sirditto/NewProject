@@ -1,8 +1,10 @@
 #pragma once
 
 #include <iostream>
+#include <datetimeapi.h>
+#include <string>
 #include <vector>
-
+#include "sqlite3.h"
 #include "Question.h"
 
 using namespace std;
@@ -17,7 +19,7 @@ public:
 	bool addNewUser(string userName, string password, string email);
 	bool isUserAndPassMatch(string userName, string password);
 	vector<Question*> initQuestions(int questionsNo);
-	vector<string> getBestScores();
+	vector<string> getBestScores(string username);
 	vector<string> getPersonalStatus(string username);
 	int insertNewGame();
 	bool updateGameStatus(int gameNum);

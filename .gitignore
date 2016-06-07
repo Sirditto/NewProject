@@ -30,6 +30,7 @@
 *.vcxproj
 *.sln
 *.suo
+<<<<<<< HEAD
 *.pdb
 *.idb
 project/Debug/project.tlog/unsuccessfulbuild
@@ -37,3 +38,6 @@ project/Debug/project.tlog/unsuccessfulbuild
 *.log
 project/Debug/project.tlog/CL.read.1.tlog
 *.tlog
+=======
+*.db
+>>>>>>> origin/master

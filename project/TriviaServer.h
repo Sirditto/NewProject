@@ -17,10 +17,11 @@
 #include "User.h"
 #include "DataBase.h"
 #include "Room.h"
-#include "RecivedMessage.h"
 #include "Validator.h"
 
 #pragma comment (lib, "Ws2_32.lib")
+
+class RecivedMessage;
 
 using namespace std;
 
