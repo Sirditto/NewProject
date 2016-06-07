@@ -1,5 +1,6 @@
 #include "TriviaServer.h"
 
+int pushRange(string str, vector<string>& vec, int first, int last);
 
 /*constructor, initialize the main listening socket */
 TriviaServer::TriviaServer() : _socket(INVALID_SOCKET)

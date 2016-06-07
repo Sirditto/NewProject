@@ -18,6 +18,7 @@
 #include "DataBase.h"
 #include "Room.h"
 #include "Validator.h"
+#include "RecivedMessage.h"
 
 #pragma comment (lib, "Ws2_32.lib")
 

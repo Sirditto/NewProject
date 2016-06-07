@@ -9,13 +9,9 @@
 #include <mutex>
 #include <queue>
 
+#include "Protocol.h"
 #include "Helper.h"
-#include "TriviaServer.h"
-#include "DataBase.h"
-#include "RecivedMessage.h"
-
-class Game;
-class User;
+#include "User.h"
 
 class Room
 {
