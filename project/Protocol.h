@@ -1,0 +1,40 @@
+#pragma once
+
+#include <iostream>
+
+#define DEFAULT_BUFLEN 200
+#define DEFAULT_PORT 8080
+
+///constants.....request means that the message would come from a client and response means the message would come from the server
+
+/*client messages*/
+#define SIGN_IN_REQUEST 200
+#define SIGN_OUT_REQUEST 201
+#define SIGN_UP_REQUEST 203
+#define ROOM_LIST_REQUEST 205
+#define USER_IN_ROOM_REQUEST 207
+#define JOIN_ROOM_REQUEST 209
+#define LEAVE_ROOM_REQUEST 211
+#define CREATE_ROOM_REQUEST 213
+#define CLOSE_ROOM_REQUEST 215
+#define START_GAME_REQUEST 217
+#define ANSWER_REQUEST 219
+#define LEAVE_GAME_REQUEST 222
+#define BEST_SCORES_REQUEST 223
+#define PERSONAL_STATUS_REQUEST 225
+#define QUIT_REQUEST 299
+
+/*server messages*/
+#define SIGN_IN_RESPONSE 102
+#define SIGN_UP_RESPONSE 104
+#define ROOM_LIST_RESPONSE 106
+#define USER_IN_ROOM_RESPONSE 108
+#define JOIN_ROOM_RESPONSE 110
+#define LEAVE_ROOM_RESPONSE 112
+#define CREATE_ROOM_RESPONSE 114
+#define CLOSE_ROOM_RESPONSE 116
+#define QUESTION_RESPONSE 118
+#define QUESTION_CORRECTION_RESPONSE 120
+#define END_GAME_RESPONSE 121
+#define BEST_SCORES_RESPONSE 124
+#define PERSONAL_STATUS_RESPONSE 126
