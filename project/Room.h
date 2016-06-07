@@ -10,11 +10,12 @@
 #include <queue>
 
 #include "Helper.h"
-#include "User.h"
 #include "TriviaServer.h"
 #include "DataBase.h"
 #include "RecivedMessage.h"
-#include "Game.h"
+
+class Game;
+class User;
 
 class Room
 {

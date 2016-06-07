@@ -44,7 +44,7 @@ private:
 	int static _roomidSequence;
 
 	void bindAndListen();
-	void acceptClient(); // name was change from accept()
+	void acceptClient(); // name was changed from accept()
 	void clientHandler(SOCKET);
 	void safeDeleteUser(RecivedMessage*);
 	

@@ -12,9 +12,10 @@
 #include "Helper.h"
 #include "TriviaServer.h"
 #include "DataBase.h"
-#include "Room.h"
 #include "RecivedMessage.h"
-#include "Game.h"
+
+class Room;
+class Game;
 
 class User
 {
