@@ -579,7 +579,7 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 		break;
 	//case of quit message
 	case QUIT_REQUEST:
-		pos = pushRange(vals, splited_vals, pos, 2); // message number
+		pos = pushRange(vals, splited_vals, pos, 2); // message number 
 		break;
 	}
 	RecivedMessage *msg = new RecivedMessage(client_sock, msgCode, splited_vals);
