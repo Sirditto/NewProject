@@ -1,13 +1,13 @@
 #include "TriviaServer.h"
 
-int pushRange(string str, vector<string>& vec, int first, int last);
-
 static const unsigned int IFACE = 0;
 
+int pushRange(string str, vector<string>& vec, int first, int last);
 
 /*constructor, initialize the main listening socket */
-TriviaServer::TriviaServer()
+TriviaServer::TriviaServer() : _socket(INVALID_SOCKET)
 {
+
 	//_db.DataBase();
 	WSADATA wsa_data = {};
 	if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0)
@@ -24,28 +24,19 @@ TriviaServer::TriviaServer()
 	}
 }
 
+
 /*distructor, closes the socket and cleans upthe room and user lists*/
 TriviaServer::~TriviaServer()
 {
-	//clearing the rook list
 	_roomList.clear();
-	//clearing the user list
 	_connectedUser.clear();
-
-	//closing the socket
 	closesocket(_socket);
 	WSACleanup();
 }
 
-/*main server function, contains the main server loop, accepts clients and call to all the other functions in the class*/
 void TriviaServer::server()
 {
 	bindAndListen();
-<<<<<<< HEAD
-=======
-	thread t(&TriviaServer::handleRecivedMessages);
-	t.detach();
->>>>>>> origin/master
 
 	std::thread t1(&TriviaServer::handleRecivedMessages, this);
 
@@ -56,6 +47,15 @@ void TriviaServer::server()
 		acceptClient();
 	}
 }
+
+/*build message from client and add it to the message queue*/
+void TriviaServer::clientHandler(SOCKET sock)
+{
+	int msg_code = Helper::getMessageTypeCode(sock); // extracting the message type code from socket
+	//building and adding the new message;
+	addRecivedMessage(buildRecivedMessage(sock, msg_code));
+}
+
 /*accept a new client*/
 void TriviaServer::acceptClient()
 {
@@ -63,19 +63,14 @@ void TriviaServer::acceptClient()
 
 	if (AcceptSocket == INVALID_SOCKET)
 		TRACE("eror accept");
-
-<<<<<<< HEAD
-
-	thread t(&TriviaServer::clientHandler,this, AcceptSocket);
-	t.detach();
-=======
-	thread t(&TriviaServer::clientHandler, curr_client_soc);
->>>>>>> origin/master
+	std::thread t2(&TriviaServer::clientHandler, this, AcceptSocket);
+	t2.detach();
 }
 
 /*binds and listens t*/
 void TriviaServer::bindAndListen()
 {
+
 	struct sockaddr_in sa = { 0 };
 	sa.sin_port = htons(8820);
 	sa.sin_family = AF_INET;
@@ -114,81 +109,81 @@ void TriviaServer::handleRecivedMessages()
 		//linking the username to the message
 		curr_msg->setUser(getUserBySocket(curr_msg->getSock()));
 
-	/**************************************************************************************************/
+		/**************************************************************************************************/
 
 		// handle requests......
 		switch (curr_msg->getMessageCode())
 		{
-		//case user requests to sign in
+			//case user requests to sign in
 		case SIGN_IN_REQUEST:
 			handleSignin(curr_msg);
 			break;
 
-		//case user requests to sign up
+			//case user requests to sign up
 		case SIGN_UP_REQUEST:
 			handleSignup(curr_msg);
 			break;
 
-		//case user requests to sign out
+			//case user requests to sign out
 		case SIGN_OUT_REQUEST:
 			handleSignout(curr_msg);
 
-		//case user requests room list
+			//case user requests room list
 		case ROOM_LIST_REQUEST:
 			handleGetRooms(curr_msg);
 			break;
 
-		//case user requests list of users in room
+			//case user requests list of users in room
 		case USER_IN_ROOM_REQUEST:
 			handleGetUserinRoom(curr_msg);
 			break;
 
-		//case user requests to join an existing room
+			//case user requests to join an existing room
 		case JOIN_ROOM_REQUEST:
 			handleJoinRoom(curr_msg);
 			break;
 
-		//case user requests to leave room
+			//case user requests to leave room
 		case LEAVE_ROOM_REQUEST:
 			handleLeaveRoom(curr_msg);
 			break;
 
-		//case user requests to create room
+			//case user requests to create room
 		case CREATE_ROOM_REQUEST:
 			handleCreateRoom(curr_msg);
 			break;
 
-		//case user requests to close room
+			//case user requests to close room
 		case CLOSE_ROOM_REQUEST:
 			handleCloseRoom(curr_msg);
 			break;
 
-		//case user requests to start game 
+			//case user requests to start game 
 		case START_GAME_REQUEST:
 			handleStartGame(curr_msg);
 			break;
 
-		//case user sent ansewr to question
+			//case user sent ansewr to question
 		case ANSWER_REQUEST:
 			handlePlayerAnswer(curr_msg);
 			break;
 
-		//case user requests to leave game
+			//case user requests to leave game
 		case LEAVE_GAME_REQUEST:
 			handleLeaveGame(curr_msg);
 			break;
 
-		//case user requests high scores
+			//case user requests high scores
 		case BEST_SCORES_REQUEST:
 			handleGetBestScores(curr_msg);
 			break;
 
-		//case user requests his\her personal status
+			//case user requests his\her personal status
 		case PERSONAL_STATUS_REQUEST:
 			handleGetPersonalStatus(curr_msg);
-			break; 
+			break;
 
-		//case user requests to quit
+			//case user requests to quit
 		case QUIT_REQUEST:
 			safeDeleteUser(curr_msg);
 			break;
@@ -206,17 +201,12 @@ Room* TriviaServer::getRoomByid(int roomid)
 User* TriviaServer::getUserByName(string username)
 {
 	//going over the user map
-<<<<<<< HEAD
-	for (map<SOCKET, User*>::iterator i = _connectedUser.begin(); i != _connectedUser.end(); i++)
-=======
 	for (map<SOCKET, User*>::const_iterator i = _connectedUser.begin(); i != _connectedUser.end(); i++)
->>>>>>> origin/master
 	{
 		//if the checked user's username is equal to the given one, return the user
 		if (i->second->getUsername() == username)
 			return i->second;
 	}
-	return NULL;
 }
 
 /*returns user by its socket*/
@@ -269,7 +259,6 @@ User* TriviaServer::handleSignin(RecivedMessage* msg)
 	}
 	else
 		return NULL;
-	
 }
 
 /*handle sign up request*/
@@ -295,25 +284,40 @@ bool TriviaServer::handleSignup(RecivedMessage* msg)
 				else
 					//send user fail message (1044)
 					Helper::sendData(msg->getSock(), to_string(SIGN_UP_RESPONSE) + "4");
-					return false;
+				return false;
 			}
 			//case user already exist
 			else
 				//send fail message (1042)
 				Helper::sendData(msg->getSock(), to_string(SIGN_UP_RESPONSE) + "2");
-				return false;
+			return false;
 		}
 		//case username is illegal
 		else
 			//send fail message (1043)
 			Helper::sendData(msg->getSock(), to_string(SIGN_UP_RESPONSE) + "3");
-			return false;
+		return false;
 	}
 	//case password is illegal
 	else
 		//send fail message (1041)
 		Helper::sendData(msg->getSock(), to_string(SIGN_UP_RESPONSE) + "1");
-		return false;
+	return false;
+}
+
+void TriviaServer::handleSignout(RecivedMessage* msg)
+{
+	//checking that user linked to the message
+	if (msg->getUser())
+	{
+		//deleting user
+		safeDeleteUser(msg);
+
+		//removing user from room and game
+		handleCloseRoom(msg);
+		handleLeaveRoom(msg);
+		handleLeaveGame(msg);
+	}
 }
 
 /*handle game leave request*/
@@ -336,7 +340,7 @@ void TriviaServer::handleStartGame(RecivedMessage* msg)
 
 		//delete room from available room list
 		_roomList.erase(_roomList.find(msg->getUser()->getRoom()->getId())); /// might cause an error
-		//send first question
+																			 //send first question
 		g->sendFirstQuestion();
 	}
 	catch (...)
@@ -351,7 +355,7 @@ void TriviaServer::handlePlayerAnswer(RecivedMessage* msg)
 	if (msg->getUser()->getGame())
 		//passing the messages arguments to the game, the answer proccess will be dealt there
 		if (!msg->getUser()->getGame()->handleAnswerFromUser(msg->getUser(), stoi(msg->getValues()[1]), stoi(msg->getValues()[2]))) /// probably not the correct way to access answer number and answer time 
-			//if function returned false, game is over so we close it
+																																	//if function returned false, game is over so we close it
 			delete msg->getUser()->getGame();
 }
 
@@ -363,11 +367,7 @@ bool TriviaServer::handleCreateRoom(RecivedMessage* msg)
 	{
 		_roomidSequence++;
 		//creating new room
-<<<<<<< HEAD
-		if (msg->getUser()->createRoom(_roomidSequence, (msg->getValues())[1], std::stoi(msg->getValues()[2]), std::stoi(msg->getValues()[3]), std::stoi(msg->getValues()[4]))) /// probably not the right way to access fields in message
-=======
 		if (msg->getUser()->createRoom(_roomidSequence, msg->getValues()[1], std::stoi(msg->getValues()[2]), std::stoi(msg->getValues()[3]), std::stoi(msg->getValues()[4]))) /// probably not the right way to access fields in message
->>>>>>> origin/master
 		{
 			//adding new room to room list
 			pair<int, Room*> newRoom(msg->getUser()->getRoom()->getId(), msg->getUser()->getRoom());
@@ -396,8 +396,6 @@ bool TriviaServer::handleCloseRoom(RecivedMessage* msg)
 			_roomList.erase(_roomList.find(msg->getUser()->getRoom()->getId()));
 			return true;
 		}
-		else
-			return false;
 	}
 	//case user isn't in a room
 	else
@@ -411,7 +409,6 @@ bool TriviaServer::handleJoinRoom(RecivedMessage* msg)
 	if (msg->getUser())
 	{
 		msg->getUser()->joinRoom((_roomList.find(stoi(msg->getValues()[1]))->second)); /// possibly would cause an error (not the correct way to access these fields)
-		return true;
 	}
 	else
 		return false;
@@ -445,7 +442,7 @@ void TriviaServer::handleGetUserinRoom(RecivedMessage* msg)
 	//checking that the requesting user is in the room
 	if (getRoomByid(stoi(msg->getValues()[1]))) /// probably not the correct way to access roomID
 	{
-		msg->getUser()->send( msg->getUser()->getRoom()->getUserListMessage()); /// critical line, might cause problems
+		msg->getUser()->send(msg->getUser()->getRoom()->getUserListMessage()); /// critical line, might cause problems
 	}
 	//if room wasnt found, send fail message to user (1080)
 	else
@@ -506,42 +503,42 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 	//adding the values
 	switch (msgCode)
 	{
-	//case of sign in message
+		//case of sign in message
 	case SIGN_IN_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); //message number
 		pos = pushRange(vals, splited_vals, pos + 2, pos + 2 + (stoi(vals.substr(pos, 2)))); // username
 		pos = pushRange(vals, splited_vals, pos + 2, pos + 2 + (stoi(vals.substr(pos, 2)))); // password
 		break;
-	//case of sign out message
+		//case of sign out message
 	case SIGN_OUT_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of sign up message
+		//case of sign up message
 	case SIGN_UP_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		pos = pushRange(vals, splited_vals, pos + 2, pos + 2 + stoi(vals.substr(pos, 2))); //username
 		pos = pushRange(vals, splited_vals, pos + 2, pos + 2 + stoi(vals.substr(pos, 2))); // password
 		pos = pushRange(vals, splited_vals, pos + 2, pos + 2 + stoi(vals.substr(pos, 2))); // email
 		break;
-	//case of room list message
+		//case of room list message
 	case ROOM_LIST_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of user list in room message
+		//case of user list in room message
 	case USER_IN_ROOM_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		pos = pushRange(vals, splited_vals, pos, pos + 3); // roomID
 		break;
-	//case of room join message
+		//case of room join message
 	case JOIN_ROOM_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		pos = pushRange(vals, splited_vals, pos, pos + 3); // roomID
 		break;
-	//case of room leaving message
+		//case of room leaving message
 	case LEAVE_ROOM_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of room creation message
+		//case of room creation message
 	case CREATE_ROOM_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		pos = pushRange(vals, splited_vals, pos + 2, pos + 2 + stoi(vals.substr(pos, 2))); //room name
@@ -549,33 +546,33 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 		pos = pushRange(vals, splited_vals, pos, pos + 1); // number of question
 		pos = pushRange(vals, splited_vals, pos, pos + 1); //time to answer question in seconds
 		break;
-	//room closing message
+		//room closing message
 	case CLOSE_ROOM_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of game starting message
+		//case of game starting message
 	case START_GAME_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of answer message
+		//case of answer message
 	case ANSWER_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		pos = pushRange(vals, splited_vals, pos, pos); // answer number
 		pos = pushRange(vals, splited_vals, pos, pos + 1); // answer time
 		break;
-	//case of game leaving message
+		//case of game leaving message
 	case LEAVE_GAME_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of top scores message
+		//case of top scores message
 	case BEST_SCORES_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of personal status message
+		//case of personal status message
 	case PERSONAL_STATUS_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number
 		break;
-	//case of quit message
+		//case of quit message
 	case QUIT_REQUEST:
 		pos = pushRange(vals, splited_vals, pos, 2); // message number 
 		break;
@@ -585,7 +582,7 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 }
 
 /*pushing values from string in the given range into the vector*/
-int pushRange(string str, vector<string>& vec,  int first, int last)
+int pushRange(string str, vector<string>& vec, int first, int last)
 {
 	vec.push_back(str.substr(first, (last + 1) - (first + 1)));
 	return last + 1;

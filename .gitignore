@@ -31,6 +31,7 @@
 *.sln
 *.suo
 <<<<<<< HEAD
+<<<<<<< HEAD
 *.pdb
 *.idb
 project/Debug/project.tlog/unsuccessfulbuild
@@ -51,3 +52,5 @@ project/Debug/project.tlog/CL.read.1.tlog
 >>>>>>> origin/master
 *.sdf
 project.sdf
+=======
+>>>>>>> parent of 61c3c41... debbugged some.....

@@ -9,7 +9,6 @@
 #include <mutex>
 #include <queue>
 
-#include "Helper.h"
 #include "Game.h"
 #include "Protocol.h"
 #include "Room.h"

@@ -140,3 +140,8 @@ int Room::closeRoom(User* user)
 		return -1;
 }
 
+/*id getter*/
+int Room::getId()
+{
+	return _id;
+}

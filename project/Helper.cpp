@@ -1,5 +1,9 @@
 #include "Helper.h"
 
+#define _WINSOCKAPI_
+
+#include <WinSock2.h>
+#include <windows.h>
 #include <string>
 #include <iomanip>
 #include <sstream>
