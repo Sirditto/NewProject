@@ -48,7 +48,6 @@ void TriviaServer::server()
 	}
 }
 
-<<<<<<< HEAD
 /*build message from client and add it to the message queue*/
 void TriviaServer::clientHandler(SOCKET sock)
 {
@@ -57,8 +56,6 @@ void TriviaServer::clientHandler(SOCKET sock)
 	addRecivedMessage(buildRecivedMessage(sock, msg_code));
 }
 
-=======
->>>>>>> origin/master
 /*accept a new client*/
 void TriviaServer::acceptClient()
 {
@@ -306,7 +303,6 @@ bool TriviaServer::handleSignup(RecivedMessage* msg)
 		//send fail message (1041)
 		Helper::sendData(msg->getSock(), to_string(SIGN_UP_RESPONSE) + "1");
 	return false;
-<<<<<<< HEAD
 }
 
 void TriviaServer::handleSignout(RecivedMessage* msg)
@@ -322,8 +318,6 @@ void TriviaServer::handleSignout(RecivedMessage* msg)
 		handleLeaveRoom(msg);
 		handleLeaveGame(msg);
 	}
-=======
->>>>>>> origin/master
 }
 
 /*handle game leave request*/
