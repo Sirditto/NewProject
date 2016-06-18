@@ -3,6 +3,7 @@
 static const unsigned int IFACE = 0;
 
 int pushRange(string str, vector<string>* vec, int first, int last);
+condition_variable cond;
 
 /*constructor, initialize the main listening socket */
 TriviaServer::TriviaServer() : _socket(INVALID_SOCKET)
@@ -90,12 +91,12 @@ void TriviaServer::handleRecivedMessages()
 
 	while (true)
 	{
-		//wait untill queue has requests in it
-		while (!_queRcvMessages.size());
-
 		//locking the mutex
-		unique_lock<mutex> lck(_mtxRecivedMessages);
+		unique_lock<mutex> lck(_mtxRecivedMessages, std::defer_lock);
 		lck.lock();
+
+		//wait untill queue has requests in it
+		cond.wait(lck);
 
 		//if queue is not empty
 		if (!_queRcvMessages.empty())
@@ -108,9 +109,10 @@ void TriviaServer::handleRecivedMessages()
 		}
 		//unlocking the mutex
 		lck.unlock();
+		cond.notify_one(); // wake up one waiting thread
 
 		//linking the username to the message
-		curr_msg->setUser(getUserBySocket(curr_msg->getSock()));
+		//curr_msg->setUser(getUserBySocket(curr_msg->getSock()));
 
 		/**************************************************************************************************/
 
@@ -217,7 +219,8 @@ User* TriviaServer::getUserByName(string username)
 /*returns user by its socket*/
 User* TriviaServer::getUserBySocket(SOCKET sock)
 {
-	return _connectedUser.find(sock)->second;
+	if (!_connectedUser.empty())
+		return _connectedUser.find(sock)->second;
 }
 
 /*disconnects user in a safe way*/
@@ -491,18 +494,21 @@ void TriviaServer::handleGetPersonalStatus(RecivedMessage* msg)
 void TriviaServer::addRecivedMessage(RecivedMessage* msg)
 {
 	/***********lock mutex***********/
-	unique_lock<mutex> lck(_mtxRecivedMessages);
+	unique_lock<mutex> lck(_mtxRecivedMessages, defer_lock);
+	lck.lock();
 
 	_queRcvMessages.push(msg);
 
 	/*********unlock mutex**********/
 	lck.unlock();
+	cond.notify_one();
 }
 
 /*building a new message*/
 RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCode)
 {
 	string vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+	User* user = NULL;
 	vals = to_string(msgCode) + vals;
 	vector<string> splited_vals;
 	int pos = 0;
@@ -515,6 +521,7 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 		pos = pushRange(vals, &splited_vals, pos, 3); //message number
 		pos = pushRange(vals, &splited_vals, pos + 2, pos + 2 + (stoi(vals.substr(pos, 2)))); // username
 		pos = pushRange(vals, &splited_vals, pos + 2, pos + 2 + (stoi(vals.substr(pos, 2)))); // password
+		user = new User(splited_vals[1], client_sock);
 		break;
 		//case of sign out message
 	case SIGN_OUT_REQUEST:
@@ -526,6 +533,7 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos, 2))); //username
 		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos, 2))); // password
 		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos, 2))); // email
+		user = new User(splited_vals[1], client_sock);
 		break;
 		//case of room list message
 	case ROOM_LIST_REQUEST:
@@ -585,6 +593,8 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 		break;
 	}
 	RecivedMessage *msg = new RecivedMessage(client_sock, msgCode, splited_vals);
+	msg->setUser(user);
+
 	return msg;
 }
 

@@ -16,7 +16,7 @@ string Question::getQuestion()
 	return _question;
 }
 
-string * Question::getAnswers()
+vector<string> Question::getAnswers()
 {
 	return _answers;
 }

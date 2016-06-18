@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include "Helper.h"
 #include "DataBase.h"
@@ -27,9 +28,10 @@ private:
 	DataBase& _db;
 	map<string, int> _results;
 	int _currTurnAnswers;
+	int _id;
 
 	bool insertGameToDB();
 	void initQuestionsFromDB();
-	void sendQuestionsRoAllUSers();
+	void sendQuestionToAllUsers();
 };
 
