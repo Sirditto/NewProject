@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <time.h>
+#include "Helper.h"
 
 using namespace std;
 

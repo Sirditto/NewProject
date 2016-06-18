@@ -1,6 +1,6 @@
 #include "DataBase.h"
 
-//sqlite3* db;
+sqlite3* db;
 string Count;
 int rc;
 char* zErrMsg;
@@ -11,8 +11,8 @@ vector<string> strVec;
 
 
 DataBase::DataBase()
-{	// connection to the database
-	/*rc = sqlite3_open("GameDB.db", &db);
+{ // connection to the database
+	rc = sqlite3_open("GameDB.db", &db);
 
 	if (rc)
 	{
@@ -22,7 +22,7 @@ DataBase::DataBase()
 		throw exception(errmsg.c_str());
 	}
 
-	rc = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS t_users(username TEXT NOT NULL PRIMARY KEY, password TEXT NOT NULL, email TEXT NOT NULL)", NULL, 0, &zErrMsg);
+	rc = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS t_users(username TEXT PRIMARY KEY NOT NULL, password TEXT NOT NULL, email TEXT NOT NULL)", NULL, 0, &zErrMsg);
 
 	if (rc != SQLITE_OK)
 	{
@@ -70,20 +70,20 @@ DataBase::DataBase()
 		errmsg.append(zErrMsg);
 		sqlite3_free(zErrMsg);
 		throw exception(errmsg.c_str());
-	}*/
+	}
 }
 
 DataBase::~DataBase()
-{/*
+{
 	//closing the database
-	sqlite3_close(db);*/
+	sqlite3_close(db);
 }
 
 bool DataBase::isUserExists(string userName)
 {
-	/*
-	cmd = "SELECT COUNT(*) FROM t_users WHERE username=";
+	cmd = "SELECT COUNT(*) FROM t_users WHERE username='";
 	cmd.append(userName);
+	cmd.append("'");
 
 	rc = sqlite3_exec(db, cmd.c_str(), callbackCount, 0, &zErrMsg);
 
@@ -97,22 +97,21 @@ bool DataBase::isUserExists(string userName)
 
 	if (Count == "0")
 		return false;
-	else*/
+	else
 		return true;
 		
 }
 
 bool DataBase::addNewUser(string userName, string password, string email)
 {
-	/*
 	cmd.clear();
-	cmd = "INSERT INTO t_users VALUES(";
+	cmd = "INSERT INTO t_users VALUES('";
 	cmd.append(userName);
-	cmd.append(", ");
+	cmd.append("', '");
 	cmd.append(password);
-	cmd.append(", ");
+	cmd.append("', '");
 	cmd.append(email);
-	cmd.append(")");
+	cmd.append("')");
 
 	rc = sqlite3_exec(db, cmd.c_str(), NULL, 0, &zErrMsg);
 
@@ -120,16 +119,16 @@ bool DataBase::addNewUser(string userName, string password, string email)
 	{
 		sqlite3_free(zErrMsg);
 		return false;
-	}*/
+	}
 	return true;
 }
 
 bool DataBase::isUserAndPassMatch(string userName, string password)
 {
-	/*
 	cmd.clear();
-	cmd = "SELECT password FROM t_users WHERE username=";
+	cmd = "SELECT password FROM t_users WHERE username='";
 	cmd.append(userName);
+	cmd.append("'");
 
 	rc = sqlite3_exec(db, cmd.c_str(), callbackCount, 0, &zErrMsg);
 
@@ -139,16 +138,16 @@ bool DataBase::isUserAndPassMatch(string userName, string password)
 		errmsg.append(zErrMsg);
 		sqlite3_free(zErrMsg);
 		throw exception(errmsg.c_str());
-	}*/
-	//if (Count == password)
+	}
+	if (Count == password)
 		return true;
-	//else
-		//return false;
+	else
+		return false;
 }
 
 vector<Question*> DataBase::initQuestions(int questionsNo)
 {
-	/*questions.clear();
+	questions.clear();
 
 	cmd.clear();
 	cmd = "SELECT * FROM t_questions ORDER BY RAND() LIMIT ";
@@ -163,17 +162,17 @@ vector<Question*> DataBase::initQuestions(int questionsNo)
 		sqlite3_free(zErrMsg);
 		throw exception(errmsg.c_str());
 	}
-	*/
+	
 	return questions;
 }
 
 vector<string> DataBase::getBestScores(string username)
 {
-	/*
+	
 	strVec.clear();
 
 	cmd.clear();
-	cmd = "";
+	cmd = "SELECT username, MAX(won_count) AS max_count FROM (SELECT username, COUNT(*) AS win_count FROM t_players_answers WHERE is_correct=1 GROUP BY username) GROUP BY username ORDER BY max_count DESC LIMIT 3";
 
 	rc = sqlite3_exec(db, cmd.c_str(), callbackBestScores, 0, &zErrMsg);
 
@@ -184,18 +183,32 @@ vector<string> DataBase::getBestScores(string username)
 		sqlite3_free(zErrMsg);
 		throw exception(errmsg.c_str());
 	}
-	*/
 	return strVec;
 }
 
 vector<string> DataBase::getPersonalStatus(string username)
 {
-	return vector<string>();
+	strVec.clear();
+
+	cmd.clear();
+	cmd = "select count(distinct game_id), sum(is_correct), count(*) - sum(is_correct), avg(answer_time) from t_players_answers where username='";
+	cmd.append(username);
+	cmd.append("'");
+
+	rc = sqlite3_exec(db, cmd.c_str(), callbackPersonalStatus, 0, &zErrMsg);
+
+	if (rc != SQLITE_OK)
+	{
+		errmsg = "SQL error: ";
+		errmsg.append(zErrMsg);
+		sqlite3_free(zErrMsg);
+		throw exception(errmsg.c_str());
+	}
+	return strVec;
 }
 
 int DataBase::insertNewGame()
 {
-	/*
 	cmd = "INSERT INTO t_games (status, start_time, end_time) VALUES (0, datetime('now'), NULL)";
 
 	rc = sqlite3_exec(db, cmd.c_str(), NULL, 0, &zErrMsg);
@@ -219,13 +232,11 @@ int DataBase::insertNewGame()
 		sqlite3_free(zErrMsg);
 		throw exception(errmsg.c_str());
 	}
-	*/
 	return atoi(Count.c_str());
 }
 
 bool DataBase::updateGameStatus(int gameNum)
 {
-	/*
 	cmd = "UPDATE t_games SET status=1, end_time=datetime('now') WHERE game_id=";
 	cmd.append(to_string(gameNum));
 
@@ -237,18 +248,18 @@ bool DataBase::updateGameStatus(int gameNum)
 		errmsg.append(zErrMsg);
 		sqlite3_free(zErrMsg);
 		return false;
-	}*/
+	}
 	return true;
 }
 
 bool DataBase::addAnswerToPlayer(int gameId, string userName, int questionId, string answer, bool isCorrect, int answerTime)
 {
-	/*
+	
 	cmd = "INSERT INTO t_players_answers VALUES (";
-	cmd.append(to_string(gameId) += ", ");
-	cmd.append(userName += ", ");
-	cmd.append(to_string(questionId) += ", ");
-	cmd.append(answer += ", ");
+	cmd.append(to_string(gameId) += ", '");
+	cmd.append(userName += "', ");
+	cmd.append(to_string(questionId) += ", '");
+	cmd.append(answer += "', ");
 	if (isCorrect)
 		cmd.append(to_string(1) += ", ");
 	else
@@ -263,7 +274,7 @@ bool DataBase::addAnswerToPlayer(int gameId, string userName, int questionId, st
 		errmsg.append(zErrMsg);
 		sqlite3_free(zErrMsg);
 		return false;
-	}*/
+	}
 	return true;
 }
 
@@ -278,7 +289,6 @@ int DataBase::callbackCount(void * notUsed, int argc, char ** argv, char ** azCo
 
 int DataBase::callbackQuestions(void * notUsed, int argc, char ** argv, char ** azCol)
 {
-	/*
 	Question* currQuestion;
 
 	currQuestion = new Question(atoi(argv[0]), argv[1], argv[2], argv[3], argv[4], argv[5]);
@@ -286,16 +296,28 @@ int DataBase::callbackQuestions(void * notUsed, int argc, char ** argv, char ** 
 	{
 		questions.push_back(currQuestion);
 		return 0;
-	}*/
+	}
 	return -1;
 }
 
 int DataBase::callbackBestScores(void * notUsed, int argc, char ** argv, char ** azCol)
 {
+	string username = argv[0];
+	stringstream str;
+	str << Helper::getPaddedNumber(username.length(), 2) << Helper::getPaddedNumber(atoi(argv[1]), 6);
+	strVec.push_back(str.str());
 	return 0;
 }
 
 int DataBase::callbackPersonalStatus(void * notUsed, int argc, char ** argv, char ** azCol)
 {
+//	stringstream str;
+//	string s = argv[3];
+//	s = s.substr(0, s.find('.')) + s.substr(s.find('.')+1, s.find('.')+3);
+//	str << Helper::getPaddedNumber(atoi(argv[0]), 4) << Helper::getPaddedNumber(atoi(argv[1]), 6) << Helper::getPaddedNumber(atoi(argv[2]), 6) << Helper::getPaddedNumber(atoi(s.c_str()), 6);
+	//strVec.push_back(str.str());
+	
+	cout << argv[0] << " " << argv[1] << " " << argv[2] << " " << argv[3] << endl;
+
 	return 0;
 }

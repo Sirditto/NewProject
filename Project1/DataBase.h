@@ -3,8 +3,9 @@
 #include <iostream>
 //#include <datetimeapi.h> error: no target arcitecture
 #include <string>
+#include <sstream>
 #include <vector>
-//#include "sqlite3.h"
+#include "sqlite3.h"
 #include "Question.h"
 
 using namespace std;
