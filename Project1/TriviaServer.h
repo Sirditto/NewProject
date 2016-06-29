@@ -32,6 +32,7 @@ private:
 
 	mutex _mtxRecivedMessages;
 	queue<RecivedMessage*> _queRcvMessages;
+	std::condition_variable cond;
 
 	int _roomidSequence;
 

@@ -3,12 +3,11 @@
 static const unsigned int IFACE = 0;
 
 int pushRange(string str, vector<string>* vec, int first, int last);
-condition_variable cond;
+
 
 /*constructor, initialize the main listening socket */
 TriviaServer::TriviaServer() : _socket(INVALID_SOCKET)
 {
-
 	//_db.DataBase();
 	WSADATA wsa_data = {};
 	if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0)
@@ -23,6 +22,9 @@ TriviaServer::TriviaServer() : _socket(INVALID_SOCKET)
 	{
 		cout << exc1.what() << '\n';
 	}
+
+	//clearing the map, just in case
+	_connectedUser.clear();
 }
 
 
@@ -52,9 +54,14 @@ void TriviaServer::server()
 /*build message from client and add it to the message queue*/
 void TriviaServer::clientHandler(SOCKET sock)
 {
-	int msg_code = Helper::getMessageTypeCode(sock); // extracting the message type code from socket
-	//building and adding the new message;
-	addRecivedMessage(buildRecivedMessage(sock, msg_code));
+	int msg_code;
+	while (true)
+	{
+		msg_code = Helper::getMessageTypeCode(sock); // extracting the message type code from socket
+		cout << "Message recieved: " << msg_code << endl;
+		//building and adding the new message;
+		addRecivedMessage(buildRecivedMessage(sock, msg_code));
+	}
 }
 
 /*accept a new client*/
@@ -63,7 +70,13 @@ void TriviaServer::acceptClient()
 	SOCKET AcceptSocket = ::accept(_socket, NULL, NULL);
 
 	if (AcceptSocket == INVALID_SOCKET)
+	{
 		TRACE("eror accept");
+	}	
+	else
+	{
+		cout << "Accepting client: socket no." << AcceptSocket << endl;
+	}
 	std::thread t2(&TriviaServer::clientHandler, this, AcceptSocket);
 	t2.detach();
 }
@@ -71,7 +84,6 @@ void TriviaServer::acceptClient()
 /*binds and listens t*/
 void TriviaServer::bindAndListen()
 {
-
 	struct sockaddr_in sa = { 0 };
 	sa.sin_port = htons(8820);
 	sa.sin_family = AF_INET;
@@ -92,30 +104,38 @@ void TriviaServer::handleRecivedMessages()
 	while (true)
 	{
 		//locking the mutex
-		unique_lock<mutex> lck(_mtxRecivedMessages, std::defer_lock);
-		lck.lock();
+		unique_lock<mutex> lck(_mtxRecivedMessages);
+	
 
 		//wait untill queue has requests in it
-		cond.wait(lck);
-
-		//if queue is not empty
-		if (!_queRcvMessages.empty())
+		/*while (_queRcvMessages.empty())
 		{
-			//saving the first message in the queue
-			curr_msg = _queRcvMessages.front();
+			cout << "Waiting..." << endl;
+			cond.wait(lck);
+		}*/
+		if (_queRcvMessages.empty())
+			cond.wait(lck);
 
-			//poping the request
-			_queRcvMessages.pop();
-		}
+		if (_queRcvMessages.empty())
+			continue;
+
+		cout << "done waiting" << endl;
+		
+		//saving the first message in the queue
+		curr_msg = _queRcvMessages.front();
+
+		//poping the request
+		_queRcvMessages.pop();
+		
 		//unlocking the mutex
 		lck.unlock();
-		cond.notify_one(); // wake up one waiting thread
 
 		//linking the username to the message
 		//curr_msg->setUser(getUserBySocket(curr_msg->getSock()));
 
 		/**************************************************************************************************/
 
+		cout << "handleRecivedMessages: Message Code = " << curr_msg->getMessageCode() << endl;
 		// handle requests......
 		switch (curr_msg->getMessageCode())
 		{
@@ -132,6 +152,7 @@ void TriviaServer::handleRecivedMessages()
 			//case user requests to sign out
 		case SIGN_OUT_REQUEST:
 			handleSignout(curr_msg);
+			break;
 
 			//case user requests room list
 		case ROOM_LIST_REQUEST:
@@ -219,8 +240,11 @@ User* TriviaServer::getUserByName(string username)
 /*returns user by its socket*/
 User* TriviaServer::getUserBySocket(SOCKET sock)
 {
-	if (!_connectedUser.empty())
-		return _connectedUser.find(sock)->second;
+	map<SOCKET, User*>::iterator it = _connectedUser.find(sock);
+	if (it != _connectedUser.end())
+		return it->second;
+	else
+		return NULL;
 }
 
 /*disconnects user in a safe way*/
@@ -243,14 +267,14 @@ User* TriviaServer::handleSignin(RecivedMessage* msg)
 			if (getUserBySocket(msg->getSock()))
 			{
 				//sending user sign in fail message (1022)
-				msg->getUser()->send(to_string(SIGN_IN_RESPONSE) + "2");
+				Helper::sendData(msg->getSock(),to_string(SIGN_IN_RESPONSE) + "2");
 				return NULL;
 			}
 			//if user isnt connected
 			else
 			{
 				//sending user sign in success message
-				msg->getUser()->send(to_string(SIGN_IN_RESPONSE) + "0");
+				Helper::sendData(msg->getSock(), to_string(SIGN_IN_RESPONSE) + "0");
 				User *newUser = new User(msg->getUser()->getUsername(), msg->getUser()->getSocket());
 				pair<SOCKET, User*> p(msg->getSock(), newUser);
 				_connectedUser.insert(p);
@@ -261,7 +285,7 @@ User* TriviaServer::handleSignin(RecivedMessage* msg)
 		else
 		{
 			//sending user sign in fail message (1021)
-			msg->getUser()->send(to_string(SIGN_IN_RESPONSE) + "1");
+			Helper::sendData(msg->getSock(), to_string(SIGN_IN_RESPONSE) + "1");
 			return NULL;
 		}
 	}
@@ -318,8 +342,9 @@ void TriviaServer::handleSignout(RecivedMessage* msg)
 	//checking that user linked to the message
 	if (msg->getUser())
 	{
-		//deleting user
-		safeDeleteUser(msg);
+		//removing the user from the connected user map
+		_connectedUser.erase(_connectedUser.find(msg->getSock()));
+		
 
 		//removing user from room and game
 		handleCloseRoom(msg);
@@ -464,16 +489,22 @@ void TriviaServer::handleGetUserinRoom(RecivedMessage* msg)
 void TriviaServer::handleGetRooms(RecivedMessage* msg)
 {
 	//checking that there are rooms in the room list
-	if (_roomList.size())
+	if (!_roomList.empty())
 	{
-		string message = to_string(ROOM_LIST_RESPONSE) + to_string(_roomList.size());
+		string message = to_string(ROOM_LIST_RESPONSE) + Helper::getPaddedNumber(_roomList.size(), 4);
 
 		for (map<int, Room*>::iterator i = _roomList.begin(); i != _roomList.end(); i++)
 		{
-			message += to_string(i->first); // adding current room's ID
+			message += Helper::getPaddedNumber(i->first, 4); // adding current room's ID
+			message += Helper::getPaddedNumber(i->second->getName().length(), 2);
 			message += i->second->getName(); // aadding current room's name
 		}
 
+		msg->getUser()->send(message);
+	}
+	else
+	{
+		string message = to_string(ROOM_LIST_RESPONSE) + Helper::getPaddedNumber(0, 4);
 		msg->getUser()->send(message);
 	}
 }
@@ -481,36 +512,55 @@ void TriviaServer::handleGetRooms(RecivedMessage* msg)
 /*handle best scores request*/
 void TriviaServer::handleGetBestScores(RecivedMessage* msg)
 {
-	///Note: will be able to do after DataBase will be finished
+	//extracting scores from database
+	vector<string> msgs = _db.getBestScores();
+	string str = to_string(BEST_SCORES_RESPONSE);
+	for (int i = 0; i < msgs.size(); i++)
+		str += msgs[i];
+
+	if (msgs.size() == 0)
+		str += "00";
+
+	//sending best scores to user
+	msg->getUser()->send(str);
 }
 
 /*handle personal status request*/
 void TriviaServer::handleGetPersonalStatus(RecivedMessage* msg)
 {
+	//extracting status from database
+	vector<string> msgs = _db.getPersonalStatus(msg->getUser()->getUsername());
+	string str = to_string(PERSONAL_STATUS_RESPONSE);
+	for (int i = 0; i < msgs.size(); i++)
+		str += msgs[i];
 
+	
+	//sending personal status to user
+	msg->getUser()->send(str);
 }
 
 /*push message to message queue*/
 void TriviaServer::addRecivedMessage(RecivedMessage* msg)
 {
 	/***********lock mutex***********/
-	unique_lock<mutex> lck(_mtxRecivedMessages, defer_lock);
-	lck.lock();
+	unique_lock<mutex> lck(_mtxRecivedMessages);
 
 	_queRcvMessages.push(msg);
 
+	cout << "Added message: " << msg->getMessageCode() << endl;
+
 	/*********unlock mutex**********/
 	lck.unlock();
-	cond.notify_one();
+	cond.notify_all();
 }
 
 /*building a new message*/
 RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCode)
 {
-	string vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
 	User* user = NULL;
-	vals = to_string(msgCode) + vals;
+	
 	vector<string> splited_vals;
+	string vals;
 	int pos = 0;
 
 	//adding the values
@@ -518,83 +568,105 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 	{
 		//case of sign in message
 	case SIGN_IN_REQUEST:
+		vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+		vals = to_string(msgCode) + vals;
+
 		pos = pushRange(vals, &splited_vals, pos, 3); //message number
-		pos = pushRange(vals, &splited_vals, pos + 2, pos + 2 + (stoi(vals.substr(pos, 2)))); // username
-		pos = pushRange(vals, &splited_vals, pos + 2, pos + 2 + (stoi(vals.substr(pos, 2)))); // password
+		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + (stoi(vals.substr(pos - 1, 2)))); // username
+		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + (stoi(vals.substr(pos - 1, 2)))); // password
 		user = new User(splited_vals[1], client_sock);
 		break;
 		//case of sign out message
 	case SIGN_OUT_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 2); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of sign up message
 	case SIGN_UP_REQUEST:
+		vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+		vals = to_string(msgCode) + vals;
+
 		pos = pushRange(vals, &splited_vals, pos, 3); // message number
-		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos, 2))); //username
-		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos, 2))); // password
-		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos, 2))); // email
+		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos - 1, 2))); //username
+		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos - 1, 2))); // password
+		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos - 1, 2))); // email
 		user = new User(splited_vals[1], client_sock);
 		break;
 		//case of room list message
 	case ROOM_LIST_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of user list in room message
 	case USER_IN_ROOM_REQUEST:
+		vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+		vals = to_string(msgCode) + vals;
+
 		pos = pushRange(vals, &splited_vals, pos, 3); // message number
 		pos = pushRange(vals, &splited_vals, pos, pos + 3); // roomID
 		break;
 		//case of room join message
 	case JOIN_ROOM_REQUEST:
+		vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+		vals = to_string(msgCode) + vals;
+
 		pos = pushRange(vals, &splited_vals, pos, 3); // message number
 		pos = pushRange(vals, &splited_vals, pos, pos + 3); // roomID
 		break;
 		//case of room leaving message
 	case LEAVE_ROOM_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of room creation message
 	case CREATE_ROOM_REQUEST:
+		vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+		vals = to_string(msgCode) + vals;
+
 		pos = pushRange(vals, &splited_vals, pos, 3); // message number
-		pos = pushRange(vals, &splited_vals, pos + 2, pos + 2 + stoi(vals.substr(pos, 2))); //room name
-		pos = pushRange(vals, &splited_vals, pos, pos); // number of players
-		pos = pushRange(vals, &splited_vals, pos, pos + 1); // number of question
-		pos = pushRange(vals, &splited_vals, pos, pos + 1); //time to answer question in seconds
+		pos = pushRange(vals, &splited_vals, pos + 1, pos + 1 + stoi(vals.substr(pos - 1, 2))); //room name
+		pos = pushRange(vals, &splited_vals, pos - 1, pos); // number of players
+		pos = pushRange(vals, &splited_vals, pos - 1, pos + 1); // number of question
+		pos = pushRange(vals, &splited_vals, pos - 1, pos + 1); //time to answer question in seconds
 		break;
 		//room closing message
 	case CLOSE_ROOM_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of game starting message
 	case START_GAME_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of answer message
 	case ANSWER_REQUEST:
+		vals = Helper::getPartFromSocket(client_sock, DEFAULT_BUFLEN, 0);
+		vals = to_string(msgCode) + vals;
+
 		pos = pushRange(vals, &splited_vals, pos, 3); // message number
 		pos = pushRange(vals, &splited_vals, pos, pos); // answer number
 		pos = pushRange(vals, &splited_vals, pos, pos + 1); // answer time
 		break;
 		//case of game leaving message
 	case LEAVE_GAME_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of top scores message
 	case BEST_SCORES_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of personal status message
 	case PERSONAL_STATUS_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number
+		splited_vals.push_back(to_string(msgCode)); // message number
 		break;
 		//case of quit message
 	case QUIT_REQUEST:
-		pos = pushRange(vals, &splited_vals, pos, 3); // message number 
+		splited_vals.push_back(to_string(msgCode)); // message number 
 		break;
 	}
 	RecivedMessage *msg = new RecivedMessage(client_sock, msgCode, splited_vals);
-	msg->setUser(user);
 
+	if (!user)
+	{
+		user = getUserBySocket(client_sock);
+	}
+	msg->setUser(user);
 	return msg;
 }
 

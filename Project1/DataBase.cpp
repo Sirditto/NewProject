@@ -21,56 +21,6 @@ DataBase::DataBase()
 		sqlite3_close(db);
 		throw exception(errmsg.c_str());
 	}
-
-	rc = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS t_users(username TEXT PRIMARY KEY NOT NULL, password TEXT NOT NULL, email TEXT NOT NULL)", NULL, 0, &zErrMsg);
-
-	if (rc != SQLITE_OK)
-	{
-		errmsg = "SQL error: ";
-		errmsg.append(zErrMsg);
-		sqlite3_free(zErrMsg);
-		throw exception(errmsg.c_str());
-	}
-
-	rc = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS t_games(game_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status INTEGER NOT NULL, start_time DATETIME NOT NULL, end_time DATETIME)", NULL, 0, &zErrMsg);
-
-	if (rc != SQLITE_OK)
-	{
-		errmsg = "SQL error: ";
-		errmsg.append(zErrMsg);
-		sqlite3_free(zErrMsg);
-		throw exception(errmsg.c_str());
-	}
-
-	rc = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS t_questions(question_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, question TEXT NOT NULL, correct_ans TEXT NOT NULL, ans2 TEXT NOT NULL, ans3 TEXT NOT NULL, ans4 TEXT NOT NULL)", NULL, 0, &zErrMsg);
-
-	if (rc != SQLITE_OK)
-	{
-		errmsg = "SQL error: ";
-		errmsg.append(zErrMsg);
-		sqlite3_free(zErrMsg);
-		throw exception(errmsg.c_str());
-	}
-
-	rc = sqlite3_exec(db, "PRAGMA foreign_keys = ON", NULL, 0, &zErrMsg);
-
-	if (rc != SQLITE_OK)
-	{
-		errmsg = "SQL error: ";
-		errmsg.append(zErrMsg);
-		sqlite3_free(zErrMsg);
-		throw exception(errmsg.c_str());
-	}
-
-	rc = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS t_players_answers(game_id INTEGER NOT NULL, username TEXT NOT NULL, question_id INTEGER NOT NULL, player_answer TEXT NOT NULL, is_correct INTEGER NOT NULL, answer_time INTEGER NOT NULL, PRIMARY KEY(game_id, username, question_id), FOREIGN KEY(game_id) REFERENCES t_games(game_id), FOREIGN KEY(username) REFERENCES t_users(username), FOREIGN KEY(question_id) REFERENCES t_questions(question_id))", NULL, 0, &zErrMsg);
-
-	if (rc != SQLITE_OK)
-	{
-		errmsg = "SQL error: ";
-		errmsg.append(zErrMsg);
-		sqlite3_free(zErrMsg);
-		throw exception(errmsg.c_str());
-	}
 }
 
 DataBase::~DataBase()
@@ -166,13 +116,13 @@ vector<Question*> DataBase::initQuestions(int questionsNo)
 	return questions;
 }
 
-vector<string> DataBase::getBestScores(string username)
+vector<string> DataBase::getBestScores()
 {
 	
 	strVec.clear();
 
 	cmd.clear();
-	cmd = "SELECT username, MAX(won_count) AS max_count FROM (SELECT username, COUNT(*) AS win_count FROM t_players_answers WHERE is_correct=1 GROUP BY username) GROUP BY username ORDER BY max_count DESC LIMIT 3";
+	cmd = "SELECT username, MAX(win_count) AS max_count FROM (SELECT username, COUNT(*) AS win_count FROM t_players_answers WHERE is_correct=1 GROUP BY username) GROUP BY username ORDER BY max_count DESC LIMIT 3";
 
 	rc = sqlite3_exec(db, cmd.c_str(), callbackBestScores, 0, &zErrMsg);
 
@@ -304,20 +254,25 @@ int DataBase::callbackBestScores(void * notUsed, int argc, char ** argv, char **
 {
 	string username = argv[0];
 	stringstream str;
-	str << Helper::getPaddedNumber(username.length(), 2) << Helper::getPaddedNumber(atoi(argv[1]), 6);
+	str << Helper::getPaddedNumber(username.length(), 2) << username <<  Helper::getPaddedNumber(atoi(argv[1]), 6);
 	strVec.push_back(str.str());
 	return 0;
 }
 
 int DataBase::callbackPersonalStatus(void * notUsed, int argc, char ** argv, char ** azCol)
 {
-//	stringstream str;
-//	string s = argv[3];
-//	s = s.substr(0, s.find('.')) + s.substr(s.find('.')+1, s.find('.')+3);
-//	str << Helper::getPaddedNumber(atoi(argv[0]), 4) << Helper::getPaddedNumber(atoi(argv[1]), 6) << Helper::getPaddedNumber(atoi(argv[2]), 6) << Helper::getPaddedNumber(atoi(s.c_str()), 6);
-	//strVec.push_back(str.str());
+	stringstream str;
+	string s, s1, s2;
+	if (argv[3] != NULL)
+	{
+		s = argv[3];
+		s1 = s.substr(0, s.find('.'));
+		s2 = s.substr(s.find('.') + 1, 2);
+		str << Helper::getPaddedNumber(atoi(argv[0]), 4) << Helper::getPaddedNumber(atoi(argv[1]), 6) << Helper::getPaddedNumber(atoi(argv[2]), 6) << Helper::getPaddedNumber(atoi(s1.c_str()), 2) << Helper::getPaddedNumber(atoi(s2.c_str()), 2);
+		strVec.push_back(str.str());
+	}
+	else
+		strVec.push_back(Helper::getPaddedNumber(0, 20));
 	
-	cout << argv[0] << " " << argv[1] << " " << argv[2] << " " << argv[3] << endl;
-
 	return 0;
 }
