@@ -4,6 +4,7 @@
 //constructor, just initializes the fields.......
 Room::Room(int id, User* admin, string name, int maxUsers, int questionNum, int questionTime) : _id(id), _admin(admin), _name(name), _maxUsers(maxUsers), _questionNum(questionNum), _questionTime(questionTime)
 {
+	_users.clear();
 	_users.push_back(admin); // also adding the admin to the user list...
 }
 
@@ -49,7 +50,7 @@ string Room::getUserListMessage()
 		message = to_string(USER_IN_ROOM_RESPONSE) + to_string(names.size());
 		for (int i = 0; i < names.size(); i++)
 		{
-			message += std::to_string(names[i].size()) + names[i]; // <name size in bytes><name>
+			message += Helper::getPaddedNumber(names[i].length(), 2) + names[i]; // <name size in bytes><name>
 		}
 	}
 
@@ -91,7 +92,7 @@ bool Room::joinRoom(User* user)
 	else
 	{
 		_users.push_back(user); // adding the new user to the room
-		Helper::sendData(user->getSocket(), to_string(JOIN_ROOM_RESPONSE) + "0" + to_string(_questionNum) + to_string(_questionTime));
+		Helper::sendData(user->getSocket(), to_string(JOIN_ROOM_RESPONSE) + "0" + Helper::getPaddedNumber(_questionNum, 2) + Helper::getPaddedNumber(_questionTime, 2));
 		sendMessage(NULL, getUserListMessage()); // sending to new and all other users the current user list in the room (108)
 		return true;
 	}

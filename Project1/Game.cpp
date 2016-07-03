@@ -16,12 +16,14 @@ Game::Game(const vector<User*>& players, int questionNum, DataBase& db) : _db(db
 	}
 
 	//initializing some fields.......
-	_db.initQuestions(questionNum);
+	_questions = _db.initQuestions(questionNum);
 	_results.clear();
 
 	//add all users (who were sent) to the game
 	for (int i = 0; i < _players.size(); i++)
 	{
+		pair<string, int> p(_players[i]->getUsername(), 0);
+		_results.insert(p);
 		_players[i]->setGame(this);
 	}
 }
@@ -39,19 +41,22 @@ void Game::sendQuestionToAllUsers()
 {
 	_currTurnAnswers = 0;
 	//poping first question from vector to send to users
-	Question* first_q = _questions[_question_num];
+	Question* first_q = _questions[_question_num - 1];
 
 	for (int i = 0; i < _players.size(); i++)
 	{
 		try
 		{
-			_players[i]->send("118" + to_string(first_q->getQuestion().size()) + first_q->getQuestion() + //[question len] + [question] 
-				to_string(first_q->getAnswers()[0].size()) + first_q->getAnswers()[0] + // [answer1 len] [answer1]
-				to_string(first_q->getAnswers()[1].size()) + first_q->getAnswers()[1] + // [answer2 len] [answer2]
-				to_string(first_q->getAnswers()[2].size()) + first_q->getAnswers()[2] + // [answer3 len] [answer3]
-				to_string(first_q->getAnswers()[3].size()) + first_q->getAnswers()[3]); // [answer4 len] [answer4]
+			_players[i]->send("118" + Helper::getPaddedNumber(first_q->getQuestion().length(), 3) + first_q->getQuestion() + //[question len] + [question] 
+				Helper::getPaddedNumber(first_q->getAnswers()[0].length(), 3) + first_q->getAnswers()[0] + // [answer1 len] [answer1]
+				Helper::getPaddedNumber(first_q->getAnswers()[1].length(), 3) + first_q->getAnswers()[1] + // [answer2 len] [answer2]
+				Helper::getPaddedNumber(first_q->getAnswers()[2].length(), 3) + first_q->getAnswers()[2] + // [answer3 len] [answer3]
+				Helper::getPaddedNumber(first_q->getAnswers()[3].length(), 3) + first_q->getAnswers()[3]); // [answer4 len] [answer4]
 		}
-		catch (...){}
+		catch (...)
+		{
+			_players[i]->send("1180");
+		}
 	}
 }
 
@@ -65,6 +70,16 @@ void Game::sendFirstQuestion()
 void Game::handleFinishGame()
 {
 	_db.updateGameStatus(_id);
+	string msg = "121" + Helper::getPaddedNumber(_players.size(), 1);
+	for (int i = 0; i < _players.size(); i++)
+	{
+		msg += Helper::getPaddedNumber(_players[i]->getUsername().length(), 2) + _players[i]->getUsername() + Helper::getPaddedNumber(_results.find(_players[i]->getUsername())->second, 2);
+	}
+	for (int i = 0; i < _players.size(); i++)
+		_players[i]->send(msg);
+
+	for (int i = 0; i < _players.size(); i++)
+		leaveGame(_players[i]);
 }
 
 /*move to next turn, return true if game is still going, else return false*/
@@ -77,9 +92,9 @@ bool Game::handleNextTurn()
 		if (_currTurnAnswers == _players.size())
 		{
 			//checking if last question was the final one
-			if (!_questions.empty())
+			if (_question_num > 1)
 			{
-				_question_num++;
+				_question_num--;
 				sendQuestionToAllUsers();
 				return true;
 			}
@@ -103,11 +118,11 @@ bool Game::handleAnswerFromUser(User* user, int answerNum, int time)
 {
 	_currTurnAnswers++;
 	//if user answered correctly
-	if (answerNum == _questions[_question_num]->getCorrectAnswerIndex())
+	if (answerNum - 1 == _questions[_question_num - 1]->getCorrectAnswerIndex())
 	{
 		_results.find(user->getUsername())->second++;
 
-		if (_db.addAnswerToPlayer(_id, user->getUsername(), _questions[_question_num]->getId(), _questions[_question_num]->getAnswers()[answerNum], true, time))
+		if (_db.addAnswerToPlayer(_id, user->getUsername(), _questions[_question_num - 1]->getId(), _questions[_question_num - 1]->getAnswers()[answerNum - 1], true, time))
 		{
 			//sending user result and attempting to move to next turn
 			user->send("1201");
@@ -117,6 +132,10 @@ bool Game::handleAnswerFromUser(User* user, int answerNum, int time)
 	//case user didn't answer correctly
 	else
 	{
+		if (answerNum != 5)
+			_db.addAnswerToPlayer(_id, user->getUsername(), _questions[_question_num - 1]->getId(), _questions[_question_num - 1]->getAnswers()[answerNum - 1], false, time);
+		else
+			_db.addAnswerToPlayer(_id, user->getUsername(), _questions[_question_num - 1]->getId(), "", false, time);
 		user->send("1200");
 		return handleNextTurn();
 	}
@@ -126,6 +145,9 @@ bool Game::handleAnswerFromUser(User* user, int answerNum, int time)
 bool Game::leaveGame(User* user)
 {
 	//deleting user from game
-	_players.erase(std::remove(_players.begin(), _players.end(), user), _players.end());
+	if (!_players.empty())
+	{
+		_players.erase(std::remove(_players.begin(), _players.end(), user), _players.end());
+	}
 	return handleNextTurn();
 }

@@ -100,7 +100,7 @@ vector<Question*> DataBase::initQuestions(int questionsNo)
 	questions.clear();
 
 	cmd.clear();
-	cmd = "SELECT * FROM t_questions ORDER BY RAND() LIMIT ";
+	cmd = "SELECT * FROM t_questions ORDER BY RANDOM() LIMIT ";
 	cmd.append(to_string(questionsNo));
 
 	rc = sqlite3_exec(db, cmd.c_str(), callbackQuestions, 0, &zErrMsg);

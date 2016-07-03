@@ -69,6 +69,7 @@ bool User::joinRoom(Room* newRoom)
 	{
 		//setting the new room and returning true
 		_currRoom = newRoom;
+		newRoom->joinRoom(this);
 		return true;
 	}
 }

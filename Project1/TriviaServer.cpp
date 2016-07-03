@@ -55,12 +55,23 @@ void TriviaServer::server()
 void TriviaServer::clientHandler(SOCKET sock)
 {
 	int msg_code;
-	while (true)
+	bool connected = true;
+	while (connected)
 	{
-		msg_code = Helper::getMessageTypeCode(sock); // extracting the message type code from socket
-		cout << "Message recieved: " << msg_code << endl;
+		try 
+		{
+			msg_code = Helper::getMessageTypeCode(sock);
+			cout << "Message recieved: " << msg_code << endl;
+			addRecivedMessage(buildRecivedMessage(sock, msg_code));
+		}
+		catch (exception e)
+		{
+			cout << to_string(sock) << " has disconnected" << endl;
+			msg_code = QUIT_REQUEST;
+			safeDeleteUser(buildRecivedMessage(sock, msg_code));
+			connected = false;
+		}
 		//building and adding the new message;
-		addRecivedMessage(buildRecivedMessage(sock, msg_code));
 	}
 }
 
@@ -366,18 +377,20 @@ void TriviaServer::handleStartGame(RecivedMessage* msg)
 {
 	try
 	{
+		int room_id = msg->getUser()->getRoom()->getId();
 		Game *g = new Game(msg->getUser()->getRoom()->getUsers(), msg->getUser()->getRoom()->getQuestionNum(), _db);
 		msg->getUser()->setGame(g);
 
 		//if no error has occured
 
 		//delete room from available room list
-		_roomList.erase(_roomList.find(msg->getUser()->getRoom()->getId())); /// might cause an error
+		_roomList.erase(_roomList.find(room_id)); /// might cause an error
 																			 //send first question
 		g->sendFirstQuestion();
 	}
-	catch (...)
+	catch (exception e)
 	{
+		cout << e.what() << endl;
 	}
 }
 
@@ -420,13 +433,15 @@ bool TriviaServer::handleCreateRoom(RecivedMessage* msg)
 /*handle room closing request*/
 bool TriviaServer::handleCloseRoom(RecivedMessage* msg)
 {
+	int res;
 	//checking that the user is in a room
-	if (msg->getUser()->getRoom())
+	if (msg->getUser()->getRoom() != nullptr)
 	{
 		//closing the room and removing the room from the room list
-		if (msg->getUser()->closeRoom() != -1)
+		res = msg->getUser()->closeRoom();
+		if (res != -1)
 		{
-			_roomList.erase(_roomList.find(msg->getUser()->getRoom()->getId()));
+			_roomList.erase(_roomList.find(res));
 			return true;
 		}
 		else
@@ -478,7 +493,7 @@ void TriviaServer::handleGetUserinRoom(RecivedMessage* msg)
 	//checking that the requesting user is in the room
 	if (getRoomByid(stoi(msg->getValues()[1]))) /// probably not the correct way to access roomID
 	{
-		msg->getUser()->send(msg->getUser()->getRoom()->getUserListMessage()); /// critical line, might cause problems
+		msg->getUser()->send(getRoomByid(stoi(msg->getValues()[1]))->getUserListMessage()); /// critical line, might cause problems
 	}
 	//if room wasnt found, send fail message to user (1080)
 	else
@@ -640,8 +655,8 @@ RecivedMessage* TriviaServer::buildRecivedMessage(SOCKET client_sock, int msgCod
 		vals = to_string(msgCode) + vals;
 
 		pos = pushRange(vals, &splited_vals, pos, 3); // message number
-		pos = pushRange(vals, &splited_vals, pos, pos); // answer number
-		pos = pushRange(vals, &splited_vals, pos, pos + 1); // answer time
+		pos = pushRange(vals, &splited_vals, pos - 1, pos); // answer number
+		pos = pushRange(vals, &splited_vals, pos - 1, pos + 1); // answer time
 		break;
 		//case of game leaving message
 	case LEAVE_GAME_REQUEST:
